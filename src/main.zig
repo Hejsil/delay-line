@@ -15,10 +15,10 @@ const Param = clap.Param(clap.Help);
 const params = [_]Param{
     clap.parseParam("-d, --delay-first-line  Also have the delay before the first line.") catch unreachable,
     clap.parseParam("-h, --help              Display this help text and exit.") catch unreachable,
-    Param{ .id = .{ .value = "TIME" }, .takes_value = .One },
+    clap.parseParam("<TIME>") catch unreachable,
 };
 
-fn usage(stream: var) !void {
+fn usage(stream: anytype) !void {
     try stream.writeAll("Usage: delay-line ");
     try clap.usage(stream, &params);
     try stream.writeAll("\nCopies standard input to standard output with a fixed delay " ++
@@ -34,8 +34,9 @@ pub fn main() !u8 {
     const stderr = std.io.getStdErr().outStream();
 
     var arena = heap.ArenaAllocator.init(heap.page_allocator);
-    var args = clap.parse(clap.Help, &params, &arena.allocator) catch |err| {
-        stderr.print("{}\n", .{err}) catch {};
+    var diag = clap.Diagnostic{};
+    var args = clap.parse(clap.Help, &params, &arena.allocator, &diag) catch |err| {
+        diag.report(stderr, err) catch {};
         usage(stderr) catch {};
         return 1;
     };
@@ -95,13 +96,13 @@ fn str_to_time(str: []const u8) !u64 {
     const res = try fmt.parseUnsigned(u64, time_str, 10);
 
     for ([_]struct { suffix: []const u8, scale: u64 }{
-        .{ .suffix = "ns", .scale = time.nanosecond },
-        .{ .suffix = "us", .scale = time.microsecond },
-        .{ .suffix = "ms", .scale = time.millisecond },
-        .{ .suffix = "s", .scale = time.second },
-        .{ .suffix = "", .scale = time.second },
-        .{ .suffix = "m", .scale = time.minute },
-        .{ .suffix = "h", .scale = time.hour },
+        .{ .suffix = "ns", .scale = 1 },
+        .{ .suffix = "us", .scale = time.ns_per_us },
+        .{ .suffix = "ms", .scale = time.ns_per_ms },
+        .{ .suffix = "s", .scale = time.ns_per_s },
+        .{ .suffix = "", .scale = time.ns_per_s },
+        .{ .suffix = "m", .scale = time.ns_per_min },
+        .{ .suffix = "h", .scale = time.ns_per_hour },
     }) |spec| {
         if (mem.eql(u8, suffix, spec.suffix))
             return res * spec.scale;
