@@ -7,7 +7,7 @@ a fixed delay between each line.
 
 Print the date+time every second:
 
-```sh
+```shdsfgsdfg
 # Notice, this pipeline only ever launches 5 processes. It is also a
 # a lot cleaner than the alternative "run date every second in a loop".
 # Clean and efficient!
